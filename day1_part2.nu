@@ -21,6 +21,6 @@ open "day1_input.txt"
     | par-each {|input| 
         let left = ($input | sort-by index_begin | first | get digit)
         let right = ($input | sort-by index_end | last | get digit)
-        $"($left)($right)" | into int
+        $left * 10 + $right
     }
     | math sum
