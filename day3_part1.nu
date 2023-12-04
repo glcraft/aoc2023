@@ -21,16 +21,6 @@ def watch_symbol_list [
     }
     return false
 }
-def watch_symbol_x [
-    line: string
-    range: any
-] {
-    match ($range | describe) {
-        "range" => (watch_symbol_range $line $range)
-        "list<int>" => (watch_symbol_list $line $range)
-        $desc => (error make {msg: $"invalid type of range: ($desc)"})
-    }
-}
 def watch_symbol_xy [
     pos: record<x: int, y: int>
     length: int
