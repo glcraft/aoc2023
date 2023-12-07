@@ -1,3 +1,47 @@
+module range {
+    def transform [
+        other: record<start:int end:int destination:int>
+    ] record<start:int end:int> -> record<start:int end:int> {
+        let input = $in
+        let offset = ($other.destination - $other.start)
+        {
+            start: ($input.start + $offset)
+            end: ($input.end + $offset)
+        }
+    }
+    def intersect [
+        other: record<start:int end:int destination:int>
+    ] record<start:int end:int> -> record<start:int end:int> {
+        let input = $in
+        let result = {
+            start: ([$input.start $other.start] | math max)
+            end: ([$input.end $other.end] | math min)
+        }
+        if ($result.start > $result.end) {
+            error make {msg: "bad range: start greater than end", result: $result}
+        }
+        $result
+    }
+    def is-intersect [
+        other: record<start:int end:int destination:int>
+    ] record<start:int end:int> -> bool {
+        let input = $in
+        $input.start >= $other.end and $input.end <= $other.start
+    }
+    def cut [
+        other: record<start:int end:int destination:int>
+    ] record<start:int end:int> -> list<record<start:int end:int>> {
+        let input = $in
+        if not ($input | is-intersect $other) {
+            return [$input $other]
+        }
+        let start_min = ([$input.start $other.start] | math min)
+        let start_max = ([$input.start $other.start] | math max)
+        let end_min = ([$input.end $other.end] | math min)
+        let end_max = ([$input.end $other.end] | math max)
+        [{start: $start_min end: $start_max} {start: $end_min end: $end_max}]
+    }
+}
 
 def make-step [
     transformers: list<record<start:int end:int destination:int>>
