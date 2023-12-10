@@ -148,18 +148,25 @@ def parse-file [] list<string> -> record {
 
 let data = (open "day5_input.txt" | lines | parse-file)
 
-let part1 = ($data.seeds | each {|seed| {start: $seed end: ($seed + 1)} })
+let parts = [
+    ($data.seeds | each {|seed| {start: $seed end: ($seed + 1)} })
+    ($data.seeds | window 2 --stride 2 | each {|seed| {start: $seed.0 end: ($seed.1 + $seed.0)} })
+]
 
-$part1
-    | each {|seed_range| 
-
-        {
-            init: $seed_range 
-            output: ($seed_range 
-                | make-steps $data.maps
-                | sort-by start
-            | math min)
-        }
+let all_time = (timeit {
+    $parts | enumerate | each {|part|
+        mut result = 0
+        let time = (timeit {
+            $result = ($part.item | each {|seed_range| 
+                $seed_range 
+                    | make-steps $data.maps
+                    | get start
+                    | math min
+                }
+                | math min
+            )
+        })
+        print $"Part ($part.index + 1): result: ($result), time: ($time)"
     }
-    | get output.start
-    | math min
+})
+print $"All parts: ($all_time)" 
