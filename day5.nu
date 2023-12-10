@@ -157,7 +157,7 @@ let all_time = (timeit {
     $parts | enumerate | each {|part|
         mut result = 0
         let time = (timeit {
-            $result = ($part.item | each {|seed_range| 
+            $result = ($part.item | par-each {|seed_range| 
                 $seed_range 
                     | make-steps $data.maps
                     | get start
