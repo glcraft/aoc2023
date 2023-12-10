@@ -1,5 +1,5 @@
-module range {
-    def transform [
+module urange {
+    export def transform [
         other: record<start:int end:int destination:int>
     ] record<start:int end:int> -> record<start:int end:int> {
         let input = $in
@@ -9,8 +9,8 @@ module range {
             end: ($input.end + $offset)
         }
     }
-    def intersect [
-        other: record<start:int end:int destination:int>
+    export def union [
+        other: record<start:int end:int>
     ] record<start:int end:int> -> record<start:int end:int> {
         let input = $in
         let result = {
@@ -18,35 +18,92 @@ module range {
             end: ([$input.end $other.end] | math min)
         }
         if ($result.start > $result.end) {
-            error make {msg: "bad range: start greater than end", result: $result}
+            error make {msg: "(intersect) bad range: start greater than end", result: $result}
         }
         $result
     }
-    def is-intersect [
-        other: record<start:int end:int destination:int>
+    export def is-intersect [
+        other: record<start:int end:int>
     ] record<start:int end:int> -> bool {
         let input = $in
-        $input.start >= $other.end and $input.end <= $other.start
+        if ($input.start >= $input.end) or ($other.start >= $other.end) {
+            error make {msg: "(is-intersect) bad range: start greater than end", input: $input, other: $other}
+        }
+        $input.start < $other.end and $input.end > $other.start
     }
-    def cut [
+    def make_result [inputs transformed] {
+            {
+                inputs: $inputs
+                transformed: $transformed
+            }
+        }
+    export def cut [
         other: record<start:int end:int destination:int>
     ] record<start:int end:int> -> list<record<start:int end:int>> {
+        
         let input = $in
-        if not ($input | is-intersect $other) {
-            return [$input $other]
+        
+        match [($input.start < $other.start) ($input.end <= $other.start) ($input.start < $other.end) ($input.end <= $other.end) ] {
+            [true false true true] => (make_result [{start: $input.start end: $other.start}] [({start: $other.start end: $input.end} | transform $other)])
+            [false false true true] => (make_result [] [({start: $input.start end: $input.end} | transform $other)])
+            [false false true false] => (make_result [{start: $other.end end: $input.end}] [({start: $input.start end: $other.end} | transform $other)])
+            [true false true false] => (make_result [{start: $input.start end: $other.start} {start: $other.end end: $input.end}] [({start: $other.start end: $other.end} | transform $other)])
+            [true true true true] | [false false false false] => (make_result [$input] [])
+            _ => (error make {msg: "bad range: start greater than end", input: $input, other: $other })
         }
-        let start_min = ([$input.start $other.start] | math min)
-        let start_max = ([$input.start $other.start] | math max)
-        let end_min = ([$input.end $other.end] | math min)
-        let end_max = ([$input.end $other.end] | math max)
-        [{start: $start_min end: $start_max} {start: $end_min end: $end_max}]
     }
 }
 
+use urange
+
 def make-step [
     transformers: list<record<start:int end:int destination:int>>
-] record<start:int end:int> -> list<record<start:int end:int>> {
+] list<record<start:int end:int>> -> list<record<start:int end:int>> {
+    mut inputs = $in
+    mut output = []
     
+    # $transformers
+    #     | reduce -f {inputs: $input output: []} {|acc it|
+    #         let res = ($it | urange cut $it)
+
+    #     }
+
+    for transformer in $transformers {
+        if ($inputs | length) == 0 {
+            break
+        }
+        
+        let collides = ($inputs | where {$in | urange is-intersect $transformer})
+        if ($collides | length) == 0 {
+            continue
+        }
+        for input in $collides {
+            let res = ($input | urange cut $transformer)
+            $output ++= $res.transformed
+            $inputs = ($inputs | where {not ($in | urange is-intersect $transformer)}) ++ $res.inputs
+        }
+        
+    }
+    $output ++ $inputs
+}
+
+def make-steps [
+    maps: list
+] record<start:int end:int> -> list<record<start:int end:int>> {
+    let input = $in
+    mut $result = [$input]
+    # print "seed" $input
+    mut from = "seed"
+    loop {
+        let step = ($maps | where from == $from | get -i 0)
+        if $step == null {
+            return $result
+        }
+        # print $"step ($step.from):($step.to)"
+        $result = ($result | make-step $step.transformers)
+        # print "$result" $result
+        $from = $step.to
+    }
 }
 
 def parse-file [] list<string> -> record {
@@ -87,4 +144,22 @@ def parse-file [] list<string> -> record {
     $result
 }
 
-open "day5_input.txt" | lines | parse-file
+# open "day5_input.txt" | lines | parse-file
+
+let data = (open "day5_input.txt" | lines | parse-file)
+
+let part1 = ($data.seeds | each {|seed| {start: $seed end: ($seed + 1)} })
+
+$part1
+    | each {|seed_range| 
+
+        {
+            init: $seed_range 
+            output: ($seed_range 
+                | make-steps $data.maps
+                | sort-by start
+            | math min)
+        }
+    }
+    | get output.start
+    | math min
