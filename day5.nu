@@ -1,3 +1,4 @@
+#!/usr/bin/env nu
 module urange {
     export def transform [
         other: record<start:int end:int destination:int>

@@ -1,3 +1,4 @@
+#!/usr/bin/env nu
 use std
 
 const cards_order = ["23456789TJQKA" "J23456789TQKA"]

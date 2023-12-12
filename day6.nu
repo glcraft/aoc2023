@@ -1,3 +1,4 @@
+#!/usr/bin/env nu
 def find-roots []: record<Time: int Distance: int> -> list<int> {
     let input = $in
     let delta = ($input.Time * $input.Time) - (4 * $input.Distance)
