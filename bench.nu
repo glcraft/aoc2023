@@ -10,6 +10,7 @@ def multishot [
             mut time_min = 1hr
             mut time_max = 0sec
             mut time_total = 0sec
+            print $"Bench n°($fn.index + 1)..."
             for _ in 1..($nb) {
                 let time = timeit { $result = (do $fn.item) }
                 $time_min = ([$time_min $time] | math min )
