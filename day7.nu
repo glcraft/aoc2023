@@ -62,10 +62,10 @@ let compute = {|p| $data
     | par-each { $in | card-to-data -p $p }
     | sort-by score
     | enumerate
-    | each {|i| ($i.index + 1) * $i.item.bid }
-    | math sum
+    | reduce -f 0 {|i acc| $acc + ($i.index + 1) * $i.item.bid }
 }
-bench {
+
+bench --repeat 10 {
     do $compute 1
 } {
     do $compute 2
