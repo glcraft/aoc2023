@@ -22,12 +22,9 @@ def card-to-data []: record<cards:string bid:string> -> any {
         }
         | sort -v -r
     )
-    if "J" in ($count | columns) and $count != {J:5} {
+    if "J" in ($count | columns) and $count.J != 5 {
         let nbJ = $count.J
         let win = ($count | columns | std iter find {|i| $i != "J"})
-        if $win == null {
-            error make {msg: $"error win: ($count)", }
-        }
         $count = ($count 
             | reject J 
             | merge {$win: (($count | get $win) + $nbJ)} 
@@ -57,7 +54,6 @@ let data = (open day7_input.txt
     | parse "{cards} {bid}"
     | par-each { $in | card-to-data }
 )
-
 
 let per_category = ((1..7) | each {|i|
     $data

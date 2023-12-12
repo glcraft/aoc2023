@@ -7,7 +7,6 @@ def note-cards []: record<cards:string bid:string> -> any {
         | get cards 
         | split chars
         | each {|c| {card:$c pos: ($cards_order | str index-of $c)} }
-        # | sort-by -r pos
     )
     ($cards | reduce -f 0 {|it acc| $acc * $total_cards + $it.pos})
 }
@@ -21,9 +20,9 @@ def card-to-data []: record<cards:string bid:string> -> any {
         | reduce --fold {} {|it acc| 
             $acc | merge {$it: (($acc | get -i $it | default 0) + 1)} 
         }
+        | sort -v -r
     )
-    let count_order = ($count | values | sort -r)
-    let set_score = (match $count_order {
+    let set_score = (match ($count | values) {
         [5] => 7
         [4 ..] => 6
         [3 2] => 5
