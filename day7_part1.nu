@@ -9,10 +9,7 @@ def note-cards []: record<cards:string bid:string> -> any {
         | each {|c| {card:$c pos: ($cards_order | str index-of $c)} }
         # | sort-by -r pos
     )
-    {
-        sorted: ($cards | get card | str join)
-        score: ($cards | reduce -f 0 {|it acc| $acc * $total_cards + $it.pos})
-    }
+    ($cards | reduce -f 0 {|it acc| $acc * $total_cards + $it.pos})
 }
 
 def card-to-data []: record<cards:string bid:string> -> any {
@@ -39,33 +36,27 @@ def card-to-data []: record<cards:string bid:string> -> any {
     let per_card_score = ($input | note-cards)
     {
         origin: $input
-        sorted: $per_card_score.sorted
         set_score: $set_score
-        per_card_score: $per_card_score.score
+        per_card_score: $per_card_score
     }
 }
 
 let data = (open day7_input.txt 
     | lines 
-    # | take 50
     | parse "{cards} {bid}"
     | par-each { $in | card-to-data }
 )
 
-let per_category = ((7..1) | each {|i|
+let per_category = ((1..7) | each {|i|
     $data
         | where set_score == $i
-        | sort-by -r per_card_score
+        | sort-by per_card_score
+        | get origin.bid
+        | into int
 })
 
 $per_category
     | flatten
-    | reverse
     | enumerate
-    | each {|i|
-        let rank = ($i.index + 1)
-        let bid = ($i.item.origin.bid | into int)
-        $rank * $bid
-        # {rank: ($i.index + 1) bid: ($i.item.origin.bid) input: $i.item.sorted}
-    }
+    | each {|i| ($i.index + 1) * $i.item }
     | math sum
