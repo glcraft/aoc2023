@@ -2,6 +2,7 @@ use std
 
 const cards_order = ["23456789TJQKA" "J23456789TQKA"]
 const total_cards = ($cards_order.0 | str length)
+const total_score = ($total_cards ** 5)
 
 def note-cards [
     --part(-p):int 
@@ -50,8 +51,7 @@ def card-to-data [
     let per_card_score = ($input | note-cards -p $part)
     {
         bid: ($input.bid | into int)
-        set_score: $set_score
-        per_card_score: $per_card_score
+        score : ($set_score * $total_score + $per_card_score)
     }
 }
 
@@ -62,32 +62,15 @@ let data = (open day7_input.txt
 
 use ./bench.nu *
 
+let compute = {|p| $data 
+    | par-each { $in | card-to-data -p $p }
+    | sort-by score
+    | enumerate
+    | each {|i| ($i.index + 1) * $i.item.bid }
+    | math sum
+}
 bench {
-    let data = ($data | par-each { $in | card-to-data -p 1})
-    (1..7) 
-        | each {|i|
-            $data
-                | where set_score == $i
-                | sort-by per_card_score
-                | get bid
-                | into int
-        }
-        | flatten
-        | enumerate
-        | each {|i| ($i.index + 1) * $i.item }
-        | math sum
+    do $compute 1
 } {
-    let data = ($data | par-each { $in | card-to-data -p 2})
-    (1..7) 
-        | each {|i|
-            $data
-                | where set_score == $i
-                | sort-by per_card_score
-                | get bid
-                | into int
-        }
-        | flatten
-        | enumerate
-        | each {|i| ($i.index + 1) * $i.item }
-        | math sum
+    do $compute 2
 }
