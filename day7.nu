@@ -4,51 +4,47 @@ const cards_order = ["23456789TJQKA" "J23456789TQKA"]
 const total_cards = ($cards_order.0 | str length)
 const total_score = ($total_cards ** 5)
 
-def note-cards [
+def score-cards [
     --part(-p):int 
-]: record<cards:string bid:string> -> any {
+]: list<string> -> int {
     let input = $in
-    let cards = ($input 
-        | get cards 
-        | split chars
-        | each {|c| {card:$c pos: ($cards_order | get ($part - 1) | str index-of $c)} }
+    let part = ($part - 1)
+    ($input | reduce -f 0 {|c acc| $acc * $total_cards + ($cards_order | get $part | str index-of $c)})
+}
+
+def score-kind [
+    --part(-p):int 
+]: list<string> -> int {
+    let input = $in
+    
+    mut count = ($input 
+        | reduce --fold {} {|it acc| 
+            $acc | merge {$it: (($acc | get -i $it | default 0) + 1)} 
+        }
     )
-    ($cards | reduce -f 0 {|it acc| $acc * $total_cards + $it.pos})
+    if $part == 2 {
+        let nbJ = ($count | get -i J | default 0)
+        if $nbJ in 1..4 {
+            let win = ($count | sort -v -r | columns | where {$in != 'J'}  | first)
+            $count = ($count 
+                | reject J 
+                | merge {$win: (($count | get $win) + $nbJ)} 
+            ) 
+        }
+    }
+    ($count | values | reduce -f 0 {|it acc| $acc + ($it ** 2) })
 }
 
 def card-to-data [
     --part(-p):int 
 ]: record<cards:string bid:string> -> any {
     let input = $in
-    
-    mut count = ($input 
+    let input_cards = ($input
         | get cards 
         | split chars 
-        | reduce --fold {} {|it acc| 
-            $acc | merge {$it: (($acc | get -i $it | default 0) + 1)} 
-        }
-        | sort -v -r
     )
-    if $part == 2 and "J" in ($count | columns) and $count.J != 5 {
-        let nbJ = $count.J
-        let win = ($count | columns | std iter find {|i| $i != "J"})
-        $count = ($count 
-            | reject J 
-            | merge {$win: (($count | get $win) + $nbJ)} 
-            | sort -v -r
-        ) 
-    }
-    let set_score = (match ($count | values) {
-        [5] => 7
-        [4 ..] => 6
-        [3 2] => 5
-        [3 ..] => 4
-        [2 2 ..] => 3
-        [2 ..] => 2
-        [1 ..] => 1
-        $d => { error make {msg: $"unreachable \(data:($d)\)"} }
-    })
-    let per_card_score = ($input | note-cards -p $part)
+    let set_score = ($input_cards | score-kind -p $part)
+    let per_card_score = ($input_cards | score-cards -p $part)
     {
         bid: ($input.bid | into int)
         score : ($set_score * $total_score + $per_card_score)
