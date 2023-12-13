@@ -6,20 +6,26 @@ def f [] {
         | each {|l| $l.1 - $l.0}
     )
     if ($result | all {|i| $i == 0}) {
-        ($input | last)
+        {prev:($input | first) after:($input | last)}
     } else {
         let r = ($result | f)
-        return (($input | last) + $r)
+        return {prev:(($input | first) - $r.prev) after:(($input | last) + $r.after)}
     }
 }
 
-open day9_input.txt
-    | lines
-    # | take 10
-    | each {|line| 
-        $line
-            | split row -r \s+ 
-            | into int
-            | f
-    }
-    | math sum
+let data = (open day9_input.txt | lines)
+
+use bench.nu *
+
+bench {
+    let data = ($data
+        | par-each {|line| 
+            $line
+                | split row -r \s+ 
+                | into int
+                | f
+        }
+    )
+    [($data | get prev | math sum) ($data | get after | math sum)]
+}
+
