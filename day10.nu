@@ -23,45 +23,46 @@ def get-pipe []: record<x:int y:int> -> string {
     $map | get $cursor.y | get $cursor.x
 }
 
-def turn-cw [dir:int]: string -> string {
-    let input = $in
-    mut dir = $dir
+def turn-cw [dir:int]: int -> int {
+    let pos = $in
+    mut dir = $pos + $dir
     while $dir < 0 {
         $dir += 4
     }
-    let pos = ($DIRS | std iter find-index {|it| $it == $input})
-    $DIRS | get (($pos + $dir) mod 4)
+    $dir mod 4
 }
 
-def next-direction [pipe:string]: string -> string {
+def next-direction [pipe:string]: int -> int {
     let dir = $in
     match [$pipe $dir] {
         ['|' $d] | ['-' $d] => $d
-        ['L' 'S'] | ['F' 'W'] | ['7' 'N'] | ['J' 'E'] => ($dir | turn-cw -1)
-        ['L' 'W'] | ['F' 'N'] | ['7' 'E'] | ['J' 'S'] => ($dir | turn-cw 1)
+        ['L' 2] | ['F' 3] | ['7' 0] | ['J' 1] => ($dir | turn-cw -1)
+        ['L' 3] | ['F' 0] | ['7' 1] | ['J' 2] => ($dir | turn-cw 1)
         _ => ""
     }
 }
-def move-cursor [dir:string]: record<x:int y:int> -> record<x:int y:int> {
+def move-cursor [dir:int]: record<x:int y:int> -> record<x:int y:int> {
+    # N E S W
+    # 0 1 2 3
     mut cursor = $in
     match $dir {
-        'N' => { $cursor.y -= 1 }
-        'S' => { $cursor.y += 1 }
-        'W' => { $cursor.x -= 1 }
-        'E' => { $cursor.x += 1 }
+        0 => { $cursor.y -= 1 }
+        2 => { $cursor.y += 1 }
+        3 => { $cursor.x -= 1 }
+        1 => { $cursor.x += 1 }
     }
     $cursor
 }
 
-def find-first-direction []: record<x:int y:int> -> string {
+def find-first-direction []: record<x:int y:int> -> int {
     let cursor = $in
-    for dir in $DIRS {
+    for dir in [0 1 2 3] {
         if not ($dir | next-direction ($cursor | move-cursor $dir | get-pipe) | is-empty) {
             return $dir
         }
     }
     error make {msg: unreachable}
-    ""
+    1
 }
 
 mut direction = ($origin | find-first-direction)
